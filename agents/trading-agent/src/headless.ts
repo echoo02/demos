@@ -105,9 +105,9 @@ function parsePositiveNumber(name: string, value: string | undefined, fallback: 
 
 function parsePositiveInt(name: string, value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`Invalid ${name}: "${value}". Expected a positive integer.`);
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${name}: "${value}". Expected a positive safe integer.`);
   }
   return parsed;
 }
