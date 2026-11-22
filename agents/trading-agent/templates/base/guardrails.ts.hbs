@@ -9,11 +9,34 @@ const DEFAULT_MAX_POSITION_PCT = TEST_MODE
   ? {{defaultMaxPositionPct}}
   : {{guardrails.maxPositionPct}};
 
-const SLIPPAGE_PCT = parseFloat(process.env.SLIPPAGE_PCT ?? String(DEFAULT_SLIPPAGE_PCT));
-const STOP_LOSS_PCT = parseFloat(process.env.STOP_LOSS_PCT ?? String(DEFAULT_STOP_LOSS_PCT));
-const MAX_POSITION_PCT = parseFloat(process.env.MAX_POSITION_PCT ?? String(DEFAULT_MAX_POSITION_PCT));
+/**
+ * Read percentage overrides strictly. Invalid environment values must stop
+ * startup rather than becoming NaN and silently disabling a trade check.
+ */
+function readGuardrailPercentage(name: string, raw: string | undefined, fallback: number): number {
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0 || value > 100) {
+    throw new Error(`[guardrail] Invalid ${name} "${raw}". Expected a number greater than 0 and at most 100.`);
+  }
+  return value;
+}
+
+const SLIPPAGE_PCT = readGuardrailPercentage("SLIPPAGE_PCT", process.env.SLIPPAGE_PCT, DEFAULT_SLIPPAGE_PCT);
+const STOP_LOSS_PCT = readGuardrailPercentage("STOP_LOSS_PCT", process.env.STOP_LOSS_PCT, DEFAULT_STOP_LOSS_PCT);
+const MAX_POSITION_PCT = readGuardrailPercentage("MAX_POSITION_PCT", process.env.MAX_POSITION_PCT, DEFAULT_MAX_POSITION_PCT);
 
 export function checkSlippage(expectedPrice: number, actualPrice: number): boolean {
+  if (
+    !Number.isFinite(expectedPrice) ||
+    !Number.isFinite(actualPrice) ||
+    expectedPrice <= 0 ||
+    actualPrice <= 0
+  ) {
+    console.warn("[guardrail] Invalid expected or actual price. Blocking trade.");
+    return false;
+  }
+
   const slippage = Math.abs((actualPrice - expectedPrice) / expectedPrice) * 100;
   if (slippage > SLIPPAGE_PCT) {
     console.warn(
@@ -25,6 +48,16 @@ export function checkSlippage(expectedPrice: number, actualPrice: number): boole
 }
 
 export function checkStopLoss(entryPrice: number, currentPrice: number): boolean {
+  if (
+    !Number.isFinite(entryPrice) ||
+    !Number.isFinite(currentPrice) ||
+    entryPrice <= 0 ||
+    currentPrice <= 0
+  ) {
+    console.warn("[guardrail] Invalid entry or current price. Cannot evaluate stop-loss.");
+    return false;
+  }
+
   const drawdown = ((entryPrice - currentPrice) / entryPrice) * 100;
   if (drawdown > STOP_LOSS_PCT) {
     console.warn(
@@ -35,10 +68,17 @@ export function checkStopLoss(entryPrice: number, currentPrice: number): boolean
   return false;
 }
 
-export function checkPositionSize(
-  tradeValue: number,
-  walletValue: number
-): boolean {
+export function checkPositionSize(tradeValue: number, walletValue: number): boolean {
+  if (
+    !Number.isFinite(tradeValue) ||
+    !Number.isFinite(walletValue) ||
+    tradeValue <= 0 ||
+    walletValue <= 0
+  ) {
+    console.warn("[guardrail] Invalid trade or wallet value. Blocking trade.");
+    return false;
+  }
+
   const positionPct = (tradeValue / walletValue) * 100;
   if (positionPct > MAX_POSITION_PCT) {
     console.warn(
