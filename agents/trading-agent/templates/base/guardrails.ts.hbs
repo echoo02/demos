@@ -54,8 +54,8 @@ export function checkStopLoss(entryPrice: number, currentPrice: number): boolean
     entryPrice <= 0 ||
     currentPrice <= 0
   ) {
-    console.warn("[guardrail] Invalid entry or current price. Cannot evaluate stop-loss.");
-    return false;
+    console.warn("[guardrail] Invalid entry or current price. Triggering stop-loss exit.");
+    return true;
   }
 
   const drawdown = ((entryPrice - currentPrice) / entryPrice) * 100;
