@@ -103,6 +103,15 @@ function parsePositiveNumber(name: string, value: string | undefined, fallback: 
   return parsed;
 }
 
+function parsePercentage(name: string, value: string | undefined, fallback: number): number {
+  if (value === undefined) return fallback;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) {
+    throw new Error(`Invalid ${name}: "${value}". Expected a number greater than 0 and at most 100.`);
+  }
+  return parsed;
+}
+
 function parsePositiveInt(name: string, value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -187,9 +196,9 @@ async function buildConfigFromFlags(flags: HeadlessFlags): Promise<ScaffoldConfi
   );
 
   const guardrails: GuardrailConfig = {
-    slippagePct: parsePositiveNumber("slippage pct", flags.slippagePct, 0.5),
-    stopLossPct: parsePositiveNumber("stop loss pct", flags.stopLossPct, 8),
-    maxPositionPct: parsePositiveNumber("max position pct", flags.maxPositionPct, 10),
+    slippagePct: parsePercentage("slippage pct", flags.slippagePct, 0.5),
+    stopLossPct: parsePercentage("stop loss pct", flags.stopLossPct, 8),
+    maxPositionPct: parsePercentage("max position pct", flags.maxPositionPct, 10),
   };
 
   // Headless critique — uses API key from env vars
